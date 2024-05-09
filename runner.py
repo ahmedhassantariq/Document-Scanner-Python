@@ -1,10 +1,13 @@
+import argparse
 import tkinter as tk
 from tkinter import *
 from tkinter import filedialog
 import cv2
+import imutils
+import matplotlib.pyplot as plt
 import numpy as np
 from imutils.perspective import four_point_transform
-
+from pyimagesearch.transform import four_point_transform
 from PIL import Image, ImageTk
 
 past = 1
@@ -25,7 +28,7 @@ edit_menu.add_command(label="Sharp")
 edit_menu.add_command(label="B&W")
 
 menubar.add_cascade(menu=file_menu, label="File")
-menubar.add_cascade(menu=edit_menu, label="Edit")
+# menubar.add_cascade(menu=edit_menu, label="Edit")
 app.config(menu=menubar)
 
 app.bind('<Escape>', lambda e: app.quit())
@@ -33,7 +36,7 @@ label_widget = Label(app)
 width, height = 800, 600
 WIDTH, HEIGHT = 1920, 1080
 
-vid = cv2.VideoCapture(0)
+vid = cv2.VideoCapture(1)
 vid.set(cv2.CAP_PROP_FRAME_WIDTH, width)
 vid.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
 
@@ -141,24 +144,28 @@ thresh_low_scale.grid(row=0, column=1)
 thresh_high_scale = tk.Scale(from_=1, to_=255, orient=tk.HORIZONTAL)
 thresh_high_scale.grid(row=1, column=1)
 
+size_scale = tk.Scale(from_=0.1, to_=1, resolution=0.1, orient=tk.HORIZONTAL)
+size_scale.grid(row=1, column=2)
+
 Checkbutton(app, text="Blur", variable=blurBool, onvalue=1, offvalue=0).grid(row=1, column=0)
 Checkbutton(app, text="Thresh", variable=threshBool, onvalue=1, offvalue=0).grid(row=2, column=1)
 Checkbutton(app, text="Scan", variable=scanBool, onvalue=1, offvalue=0).grid(row=3, column=1)
 
 
 def applyFilters():
-    image = cv2.imread('test_img.jpg')
+    image = cv2.imread('img.png')
 
-    if (scanBool.get() == 1):
+    if scanBool.get() == 1:
         image = scan_detection(image)
 
-    if (threshBool.get() == 1):
+    if threshBool.get() == 1:
         image = threshHold(image)
 
-    if (blurBool.get() == 1):
+    if blurBool.get() == 1:
         image = blur_image(image)
 
-    cv2.imshow("Image", cv2.resize(image, (int(0.5 * image.shape[1]), int(0.5 * image.shape[0]))))
+    cv2.imshow("Image",
+               cv2.resize(image, (int(size_scale.get() * image.shape[1]), int(size_scale.get() * image.shape[0]))))
 
 
 Button(app, text="Apply Filters", command=applyFilters).grid(row=2, column=0)
