@@ -153,7 +153,7 @@ Checkbutton(app, text="Scan", variable=scanBool, onvalue=1, offvalue=0).grid(row
 
 
 def applyFilters():
-    image = cv2.imread('img.png')
+    image = cv2.imread('img2.jpg')
 
     if scanBool.get() == 1:
         image = scan_detection(image)
