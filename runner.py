@@ -36,9 +36,10 @@ label_widget = Label(app)
 width, height = 800, 600
 WIDTH, HEIGHT = 1920, 1080
 
-vid = cv2.VideoCapture(1)
+vid = cv2.VideoCapture(0)
 vid.set(cv2.CAP_PROP_FRAME_WIDTH, width)
 vid.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+file_path = ''
 
 
 def capture_image():
@@ -64,6 +65,8 @@ def capture_image():
 
         delete_button = tk.Button(app, text="Delete", command=deleteImage)
         delete_button.grid(row=0, column=0)
+        global main_image
+        main_image = image
 
 
 def selectImage():
@@ -72,22 +75,22 @@ def selectImage():
     if filename:
         file_menu.entryconfig(1, state=DISABLED)
         file_menu.entryconfig(2, state=DISABLED)
-        image = Image.open(filename)
-        image = image.resize((250, 250), Image.BILINEAR)
-        test = ImageTk.PhotoImage(image)
-        label1 = tk.Label(image=test)
-        label1.image = test
-        label1.size = image.size
-        label1.place(x=0, y=0)
+        return cv2.imread(filename)
+        # image = image.resize((250, 250), Image.BILINEAR)
+        # test = ImageTk.PhotoImage(image)
+        # label1 = tk.Label(image=test)
+        # label1.image = test
+        # label1.size = image.size
+        # label1.place(x=0, y=0)
 
-        def deleteImage():
-            label1.config(image='')
-            delete_button.destroy()
-            file_menu.entryconfig(1, state=NORMAL)
-            file_menu.entryconfig(2, state=NORMAL)
-
-        delete_button = tk.Button(app, text="Delete", command=deleteImage)
-        delete_button.grid(row=0, column=0)
+        # def deleteImage():
+        #     label1.config(image='')
+        #     delete_button.destroy()
+        #     file_menu.entryconfig(1, state=NORMAL)
+        #     file_menu.entryconfig(2, state=NORMAL)
+        #
+        # delete_button = tk.Button(app, text="Delete", command=deleteImage)
+        # delete_button.grid(row=0, column=0)
 
 
 def blur_image(image):
@@ -106,9 +109,15 @@ def threshHold(image):
 def scan_detection(image):
     global document_contour
     document_contour = np.array([[0, 0], [WIDTH, 0], [WIDTH, HEIGHT], [0, HEIGHT]])
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    blur = cv2.GaussianBlur(gray, (5, 5), 0)
-    _, threshold = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    lower_white = np.array([0, 0, 200])
+    upper_white = np.array([179, 30, 255])
+    mask = cv2.inRange(hsv, lower_white, upper_white)
+
+    result = cv2.bitwise_and(image, image, mask=mask)
+    gray = cv2.cvtColor(result, cv2.COLOR_BGR2GRAY)
+    _, threshold = cv2.threshold(gray, 125, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
     contours, _ = cv2.findContours(threshold, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
     contours = sorted(contours, key=cv2.contourArea, reverse=True)
     max_area = 0
@@ -145,6 +154,7 @@ thresh_high_scale = tk.Scale(from_=1, to_=255, orient=tk.HORIZONTAL)
 thresh_high_scale.grid(row=1, column=1)
 
 size_scale = tk.Scale(from_=0.1, to_=1, resolution=0.1, orient=tk.HORIZONTAL)
+size_scale.set(0.5)
 size_scale.grid(row=1, column=2)
 
 Checkbutton(app, text="Blur", variable=blurBool, onvalue=1, offvalue=0).grid(row=1, column=0)
@@ -153,8 +163,10 @@ Checkbutton(app, text="Scan", variable=scanBool, onvalue=1, offvalue=0).grid(row
 
 
 def applyFilters():
-    image = cv2.imread('img2.jpg')
-
+    # image = cv2.imread('img2.jpg')
+    image = selectImage()
+    if image is None:
+        return
     if scanBool.get() == 1:
         image = scan_detection(image)
 
