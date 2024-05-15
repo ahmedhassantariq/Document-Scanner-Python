@@ -1,16 +1,14 @@
-import argparse
 import tkinter as tk
 from tkinter import *
 from tkinter import filedialog
 import cv2
-import imutils
-import matplotlib.pyplot as plt
 import numpy as np
 from imutils.perspective import four_point_transform
 from pyimagesearch.transform import four_point_transform
 from PIL import Image, ImageTk
+import img2pdf
 
-past = 1
+past = 196
 app = Tk()
 app.title('Document Scanner')
 app.geometry('650x750')
@@ -48,14 +46,14 @@ def capture_image():
     result, frame = vid.read()
 
     if result:
-        cv2.imwrite("sample.png", frame)
-        image = Image.open('sample.png')
+        cv2.imwrite("input.jpg", frame)
+        image = Image.open('input.jpg')
         image = image.resize((250, 250), Image.BILINEAR)
         test = ImageTk.PhotoImage(image)
         label1 = tk.Label(image=test)
         label1.image = test
         label1.size = image.size
-        label1.place(x=0, y=0)
+        label1.place(x=0, y=200)
 
         def deleteImage():
             label1.config(image='')
@@ -64,7 +62,7 @@ def capture_image():
             file_menu.entryconfig(2, state=NORMAL)
 
         delete_button = tk.Button(app, text="Delete", command=deleteImage)
-        delete_button.grid(row=0, column=0)
+        delete_button.place(x=100, y=220)
         global main_image
         main_image = image
 
@@ -75,22 +73,24 @@ def selectImage():
     if filename:
         file_menu.entryconfig(1, state=DISABLED)
         file_menu.entryconfig(2, state=DISABLED)
-        return cv2.imread(filename)
-        # image = image.resize((250, 250), Image.BILINEAR)
-        # test = ImageTk.PhotoImage(image)
-        # label1 = tk.Label(image=test)
-        # label1.image = test
-        # label1.size = image.size
-        # label1.place(x=0, y=0)
+        image = Image.open(filename)
+        img = cv2.imread(filename)
+        cv2.imwrite("input.jpg", img)
+        image = image.resize((250, 250), Image.BILINEAR)
+        test = ImageTk.PhotoImage(image)
+        label1 = tk.Label(image=test)
+        label1.image = test
+        label1.size = image.size
+        label1.place(x=0, y=200)
 
-        # def deleteImage():
-        #     label1.config(image='')
-        #     delete_button.destroy()
-        #     file_menu.entryconfig(1, state=NORMAL)
-        #     file_menu.entryconfig(2, state=NORMAL)
-        #
-        # delete_button = tk.Button(app, text="Delete", command=deleteImage)
-        # delete_button.grid(row=0, column=0)
+        def deleteImage():
+            label1.config(image='')
+            delete_button.destroy()
+            file_menu.entryconfig(1, state=NORMAL)
+            file_menu.entryconfig(2, state=NORMAL)
+
+        delete_button = tk.Button(app, text="Delete", command=deleteImage)
+        delete_button.place(x=100, y=220)
 
 
 def blur_image(image):
@@ -134,6 +134,27 @@ def scan_detection(image):
     return cv2.resize(warped, (int(warped.shape[1]), int(warped.shape[0])))
 
 
+def denoise_image(image):
+    denoised_image = cv2.fastNlMeansDenoisingColored(image, None, 10, 10, 7, 21)
+    contrast_stretched_image = cv2.normalize(denoised_image, None, 255, 0, cv2.NORM_MINMAX, cv2.CV_8UC1)
+    kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]], np.float32)
+    sharpened_image = cv2.filter2D(contrast_stretched_image, -1, kernel=kernel)
+    brightness_image = cv2.convertScaleAbs(sharpened_image, alpha=1, beta=5)
+
+    lookup_table = np.array([((i / 255.0) ** gamma_scale.get()) * 255 for i in np.arange(0, 256)]).astype("uint8")
+    gamma_corrected_image = cv2.LUT(brightness_image, lookup_table)
+    return gamma_corrected_image
+
+
+def save_pdf():
+    image = Image.open('output.jpg')
+    pdf_bytes = img2pdf.convert(image.filename)
+    file = open('output.pdf', "wb")
+    file.write(pdf_bytes)
+    image.close()
+    file.close()
+
+
 def fixBlur(n):
     global past
     n = int(n)
@@ -142,33 +163,47 @@ def fixBlur(n):
         past = blur_scale.get()
 
 
+# bools
 blurBool = IntVar()
 threshBool = IntVar()
 scanBool = IntVar()
+denoiseBool = IntVar()
+inverseBool = IntVar()
+
 blur_scale = tk.Scale(from_=1, to_=101, command=fixBlur, orient=tk.HORIZONTAL)
 blur_scale.grid(row=0, column=0)
 thresh_low_scale = tk.Scale(from_=1, to_=255, orient=tk.HORIZONTAL)
+thresh_low_scale.set(255)
 thresh_low_scale.grid(row=0, column=1)
 
 thresh_high_scale = tk.Scale(from_=1, to_=255, orient=tk.HORIZONTAL)
+thresh_high_scale.set(155)
 thresh_high_scale.grid(row=1, column=1)
 
 size_scale = tk.Scale(from_=0.1, to_=1, resolution=0.1, orient=tk.HORIZONTAL)
 size_scale.set(0.5)
 size_scale.grid(row=1, column=2)
 
+gamma_scale = tk.Scale(from_=0.1, to_=5, resolution=0.1, orient=tk.HORIZONTAL)
+gamma_scale.set(1.5)
+gamma_scale.grid(row=0, column=3)
+
 Checkbutton(app, text="Blur", variable=blurBool, onvalue=1, offvalue=0).grid(row=1, column=0)
 Checkbutton(app, text="Thresh", variable=threshBool, onvalue=1, offvalue=0).grid(row=2, column=1)
 Checkbutton(app, text="Scan", variable=scanBool, onvalue=1, offvalue=0).grid(row=3, column=1)
+Checkbutton(app, text="Denoise", variable=denoiseBool, onvalue=1, offvalue=0).grid(row=4, column=3)
+Checkbutton(app, text="Inverse", variable=inverseBool, onvalue=1, offvalue=0).grid(row=4, column=4)
 
 
 def applyFilters():
-    # image = cv2.imread('img2.jpg')
-    image = selectImage()
+    image = cv2.imread('input.jpg')
     if image is None:
         return
     if scanBool.get() == 1:
         image = scan_detection(image)
+
+    if denoiseBool.get() == 1:
+        image = denoise_image(image)
 
     if threshBool.get() == 1:
         image = threshHold(image)
@@ -176,10 +211,13 @@ def applyFilters():
     if blurBool.get() == 1:
         image = blur_image(image)
 
-    cv2.imshow("Image",
-               cv2.resize(image, (int(size_scale.get() * image.shape[1]), int(size_scale.get() * image.shape[0]))))
+    if inverseBool.get() == 1:
+        image = 255 - image
+
+    cv2.imwrite('output.jpg', image)
+    cv2.imshow("Output Image",cv2.resize(image, (int(size_scale.get() * image.shape[1]), int(size_scale.get() * image.shape[0]))))
 
 
 Button(app, text="Apply Filters", command=applyFilters).grid(row=2, column=0)
-
+Button(app, text="Save Pdf", command=save_pdf).grid(row=3, column=0)
 app.mainloop()
