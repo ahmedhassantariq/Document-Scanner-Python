@@ -146,6 +146,11 @@ def denoise_image(image):
     return gamma_corrected_image
 
 
+def sharpen_image(image):
+    kernel = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])
+    return cv2.filter2D(image, -1, kernel)
+
+
 def save_pdf():
     image = Image.open('output.jpg')
     pdf_bytes = img2pdf.convert(image.filename)
@@ -153,6 +158,19 @@ def save_pdf():
     file.write(pdf_bytes)
     image.close()
     file.close()
+
+
+def brightness(image):
+    # hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    # h, s, v = cv2.split(hsv)
+    #
+    # lim = 255 - brightness_scale.get()
+    # v[v > lim] = 255
+    # v[v <= lim] += brightness_scale.get()
+    #
+    # final_hsv = cv2.merge((h, s, v))
+    # img = cv2.cvtColor(final_hsv, cv2.COLOR_HSV2BGR)
+    return cv2.convertScaleAbs(image, image, brightness_scale.get())
 
 
 def fixBlur(n):
@@ -163,37 +181,13 @@ def fixBlur(n):
         past = blur_scale.get()
 
 
-# bools
 blurBool = IntVar()
 threshBool = IntVar()
 scanBool = IntVar()
 denoiseBool = IntVar()
 inverseBool = IntVar()
-
-blur_scale = tk.Scale(from_=1, to_=101, command=fixBlur, orient=tk.HORIZONTAL)
-blur_scale.grid(row=0, column=0)
-thresh_low_scale = tk.Scale(from_=1, to_=255, orient=tk.HORIZONTAL)
-thresh_low_scale.set(255)
-thresh_low_scale.grid(row=0, column=1)
-
-thresh_high_scale = tk.Scale(from_=1, to_=255, orient=tk.HORIZONTAL)
-thresh_high_scale.set(155)
-thresh_high_scale.grid(row=1, column=1)
-
-size_scale = tk.Scale(from_=0.1, to_=1, resolution=0.1, orient=tk.HORIZONTAL)
-size_scale.set(0.5)
-size_scale.grid(row=1, column=2)
-
-gamma_scale = tk.Scale(from_=0.1, to_=5, resolution=0.1, orient=tk.HORIZONTAL)
-gamma_scale.set(1.5)
-gamma_scale.grid(row=0, column=3)
-
-Checkbutton(app, text="Blur", variable=blurBool, onvalue=1, offvalue=0).grid(row=1, column=0)
-Checkbutton(app, text="Thresh", variable=threshBool, onvalue=1, offvalue=0).grid(row=2, column=1)
-Checkbutton(app, text="Scan", variable=scanBool, onvalue=1, offvalue=0).grid(row=3, column=1)
-Checkbutton(app, text="Denoise", variable=denoiseBool, onvalue=1, offvalue=0).grid(row=4, column=3)
-Checkbutton(app, text="Inverse", variable=inverseBool, onvalue=1, offvalue=0).grid(row=4, column=4)
-
+sharpenBool = IntVar()
+brightBool = IntVar()
 
 def applyFilters():
     image = cv2.imread('input.jpg')
@@ -214,10 +208,56 @@ def applyFilters():
     if inverseBool.get() == 1:
         image = 255 - image
 
+    if sharpenBool.get() == 1:
+        image = sharpen_image(image)
+
+    if brightBool.get() == 1:
+        image = brightness(image)
+
     cv2.imwrite('output.jpg', image)
-    cv2.imshow("Output Image",cv2.resize(image, (int(size_scale.get() * image.shape[1]), int(size_scale.get() * image.shape[0]))))
+    cv2.imshow("Output Image",
+               cv2.resize(image, (int(size_scale.get() * image.shape[1]), int(size_scale.get() * image.shape[0]))))
 
 
-Button(app, text="Apply Filters", command=applyFilters).grid(row=2, column=0)
-Button(app, text="Save Pdf", command=save_pdf).grid(row=3, column=0)
+# bools
+
+
+Label(textvariable=tk.StringVar(value="Blur")).grid(row=0, column=0)
+Checkbutton(app, text="Blur", variable=blurBool, onvalue=1, offvalue=0).grid(row=1, column=0)
+blur_scale = tk.Scale(from_=1, to_=101, command=fixBlur, orient=tk.HORIZONTAL)
+blur_scale.grid(row=2, column=0)
+
+Label(textvariable=tk.StringVar(value="Threshold")).grid(row=0, column=1)
+Checkbutton(app, text="Thresh", variable=threshBool, onvalue=1, offvalue=0).grid(row=1, column=1)
+thresh_low_scale = tk.Scale(from_=1, to_=255, orient=tk.HORIZONTAL)
+thresh_low_scale.set(255)
+thresh_low_scale.grid(row=2, column=1)
+thresh_high_scale = tk.Scale(from_=1, to_=255, orient=tk.HORIZONTAL)
+thresh_high_scale.set(155)
+thresh_high_scale.grid(row=3, column=1)
+
+Label(textvariable=tk.StringVar(value="Image Scale")).grid(row=0, column=2)
+size_scale = tk.Scale(from_=0.1, to_=1, resolution=0.1, orient=tk.HORIZONTAL)
+size_scale.set(0.5)
+size_scale.grid(row=1, column=2)
+
+Label(textvariable=tk.StringVar(value="Gamma")).grid(row=0, column=3)
+Checkbutton(app, text="Denoise", variable=denoiseBool, onvalue=1, offvalue=0).grid(row=1, column=3)
+gamma_scale = tk.Scale(from_=0.1, to_=5, resolution=0.1, orient=tk.HORIZONTAL)
+gamma_scale.set(1.5)
+gamma_scale.grid(row=2, column=3)
+
+Label(textvariable=tk.StringVar(value="Brightness")).grid(row=0, column=4)
+Checkbutton(app, text="Brightness", variable=brightBool, onvalue=1, offvalue=0).grid(row=1, column=4)
+brightness_scale = tk.Scale(from_=1, to_=255, orient=tk.HORIZONTAL)
+brightness_scale.set(1)
+brightness_scale.grid(row=2, column=4)
+
+Checkbutton(app, text="Scan", variable=scanBool, onvalue=1, offvalue=0).grid(row=0, column=5)
+Checkbutton(app, text="Sharpen", variable=sharpenBool, onvalue=1, offvalue=0).grid(row=1, column=5)
+Checkbutton(app, text="Inverse", variable=inverseBool, onvalue=1, offvalue=0).grid(row=3, column=5)
+
+Button(app, text="Apply Filters", command=applyFilters).grid(row=4, column=0)
+Button(app, text="Save Pdf", command=save_pdf).grid(row=4, column=1)
+
 app.mainloop()
