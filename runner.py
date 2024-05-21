@@ -8,32 +8,35 @@ from pyimagesearch.transform import four_point_transform
 from PIL import Image, ImageTk
 import img2pdf
 
+# Imported Libraries for operations
+
+
 past = 196
+# Initializing Tkinter Application
 app = Tk()
 app.title('Document Scanner')
 app.geometry('650x750')
 
+# Adding 'File' menu bar to the menu section
 menubar = tk.Menu()
 file_menu = tk.Menu(menubar, tearoff=False)
 edit_menu = tk.Menu(menubar, tearoff=False)
 
+# File menu bar items added
 file_menu.add_command(label="Browse", command=lambda: selectImage())
 file_menu.add_command(label="Capture", command=lambda: capture_image())
 file_menu.add_command(label="Exit", command=lambda: app.quit())
 
-edit_menu.add_command(label="Blur", command=lambda: blur_image())
-edit_menu.add_command(label="Sharp")
-edit_menu.add_command(label="B&W")
-
 menubar.add_cascade(menu=file_menu, label="File")
-# menubar.add_cascade(menu=edit_menu, label="Edit")
 app.config(menu=menubar)
 
+# Binding escape key to the application to quit
 app.bind('<Escape>', lambda e: app.quit())
 label_widget = Label(app)
 width, height = 800, 600
 WIDTH, HEIGHT = 1920, 1080
 
+# Initializing video capture from default device camera with set height and width
 vid = cv2.VideoCapture(0)
 vid.set(cv2.CAP_PROP_FRAME_WIDTH, width)
 vid.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
@@ -41,8 +44,11 @@ file_path = ''
 
 
 def capture_image():
+    # Enables/Disables buttons based upon image capture from camera
     file_menu.entryconfig(1, state=DISABLED)
     file_menu.entryconfig(2, state=DISABLED)
+
+    # Captures frame from the camera
     result, frame = vid.read()
 
     if result:
@@ -63,12 +69,12 @@ def capture_image():
 
         delete_button = tk.Button(app, text="Delete", command=deleteImage)
         delete_button.place(x=100, y=220)
-        global main_image
-        main_image = image
 
 
 def selectImage():
+    # Open image browser dialog
     filename = filedialog.askopenfilename()
+
     print(filename)
     if filename:
         file_menu.entryconfig(1, state=DISABLED)
@@ -161,19 +167,12 @@ def save_pdf():
 
 
 def brightness(image):
-    # hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    # h, s, v = cv2.split(hsv)
-    #
-    # lim = 255 - brightness_scale.get()
-    # v[v > lim] = 255
-    # v[v <= lim] += brightness_scale.get()
-    #
-    # final_hsv = cv2.merge((h, s, v))
-    # img = cv2.cvtColor(final_hsv, cv2.COLOR_HSV2BGR)
     return cv2.convertScaleAbs(image, image, brightness_scale.get())
 
 
 def fixBlur(n):
+    # Sets blur scale value to odd for filter. The user cannot enter even values for filter
+    # 3x3, 5x5, 7x7 and not 2x2, 4x4, 6x6
     global past
     n = int(n)
     if not n % 2:
@@ -181,6 +180,7 @@ def fixBlur(n):
         past = blur_scale.get()
 
 
+# Variable to carry operations
 blurBool = IntVar()
 threshBool = IntVar()
 scanBool = IntVar()
@@ -189,39 +189,50 @@ inverseBool = IntVar()
 sharpenBool = IntVar()
 brightBool = IntVar()
 
+
 def applyFilters():
+    # This func is called upon 'Apply Filter'
+    # Filters are applied sequentially. However the sequence can be changed by re-ordering the functions
     image = cv2.imread('input.jpg')
+
+    # Checks if the image exists or not
     if image is None:
         return
     if scanBool.get() == 1:
+        # Scans the documents and separates from the background
         image = scan_detection(image)
 
     if denoiseBool.get() == 1:
+        # Denoise filter
         image = denoise_image(image)
 
     if threshBool.get() == 1:
+        # Threshold filter with two sliders for upper and lower bound
         image = threshHold(image)
 
     if blurBool.get() == 1:
+        # Blur filter
         image = blur_image(image)
 
     if inverseBool.get() == 1:
+        # Image inverse filter
         image = 255 - image
 
     if sharpenBool.get() == 1:
+        # Image sharpening filter
         image = sharpen_image(image)
 
     if brightBool.get() == 1:
+        # Brightness Filter
         image = brightness(image)
 
+    # Writes output image to the default directory and shows image on screen
     cv2.imwrite('output.jpg', image)
     cv2.imshow("Output Image",
                cv2.resize(image, (int(size_scale.get() * image.shape[1]), int(size_scale.get() * image.shape[0]))))
 
 
-# bools
-
-
+# For packing check buttons and sliders into the Tkinter Application
 Label(textvariable=tk.StringVar(value="Blur")).grid(row=0, column=0)
 Checkbutton(app, text="Blur", variable=blurBool, onvalue=1, offvalue=0).grid(row=1, column=0)
 blur_scale = tk.Scale(from_=1, to_=101, command=fixBlur, orient=tk.HORIZONTAL)
