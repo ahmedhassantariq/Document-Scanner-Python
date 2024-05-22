@@ -101,7 +101,7 @@ def selectImage():
 
 def blur_image(image):
     gray = cv2.cvtColor(image, cv2.COLOR_RGB2RGBA)
-    result = cv2.GaussianBlur(gray, (blur_scale.get(), blurBool.get()), 0)
+    result = cv2.GaussianBlur(gray, (blur_scale.get(), blur_scale.get()), 0)
     return result
 
 
