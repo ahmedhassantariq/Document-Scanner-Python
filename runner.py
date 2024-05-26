@@ -192,12 +192,17 @@ brightBool = IntVar()
 
 def applyFilters():
     # This func is called upon 'Apply Filter'
-    # Filters are applied sequentially. However the sequence can be changed by re-ordering the functions
+    # Filters are applied sequentially. However, the sequence can be changed by re-ordering the functions
     image = cv2.imread('input.jpg')
 
     # Checks if the image exists or not
     if image is None:
         return
+
+    if inverseBool.get() == 1:
+        # Image inverse filter
+        image = 255 - image
+
     if scanBool.get() == 1:
         # Scans the documents and separates from the background
         image = scan_detection(image)
@@ -214,9 +219,7 @@ def applyFilters():
         # Blur filter
         image = blur_image(image)
 
-    if inverseBool.get() == 1:
-        # Image inverse filter
-        image = 255 - image
+
 
     if sharpenBool.get() == 1:
         # Image sharpening filter
